@@ -1,7 +1,6 @@
 import {
     Clock,
     Color,
-    Matrix4,
     Mesh,
     RepeatWrapping,
     ShaderMaterial,
@@ -12,9 +11,7 @@ import {
 } from 'three';
 import type {
     BufferGeometry,
-    Camera,
     ColorRepresentation,
-    IUniform,
     Object3D,
     Texture,
     TextureEncoding
