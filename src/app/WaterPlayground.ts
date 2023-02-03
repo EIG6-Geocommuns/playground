@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import Stats from 'three/examples/jsm/libs/stats.module';
 
 import { GUI } from 'dat.gui';
 
 import { Water } from '../water/Water';
 
 let scene: THREE.Scene;
-let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
-let water: Water;
+let camera: THREE.PerspectiveCamera;
 let controls: OrbitControls;
+let water: Water;
 let prevTime = 0;
 
 const flowMapTexture = 'textures/water/Water_1_M_Flow.jpg';
@@ -24,6 +25,96 @@ const config = {
     normalMap1: normalMap1Texture,
 }
 
+// TODO: Build from blender and export as a gltf file
+function buildGround() {
+    const textureLoader = new THREE.TextureLoader();
+    const ground = new THREE.Group();
+
+    // Base geometries and materials
+    const baseGeometry = new THREE.PlaneGeometry(5, 20, 10, 10);
+    const baseMaterial = new THREE.MeshBasicMaterial({
+        color: 0xcccccc,
+        side: THREE.DoubleSide
+    });
+
+    const sideGeometry = new THREE.PlaneGeometry(2.5, 20, 10, 10);
+    const sideMaterial = new THREE.MeshBasicMaterial({
+        color: 0xcccccc,
+        side: THREE.DoubleSide
+    });
+
+    // Load texture
+    textureLoader.load(groundTexture, function(map) {
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.RepeatWrapping;
+        map.anisotropy = 16;
+        map.repeat.set(1, 4);
+        baseMaterial.map = map;
+        baseMaterial.needsUpdate = true;
+    });
+    textureLoader.load(groundTexture, function(map) {
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.RepeatWrapping;
+        map.anisotropy = 16;
+        map.repeat.set(0.5, 4);
+        sideMaterial.map = map;
+        sideMaterial.needsUpdate = true;
+    });
+
+    // Builders
+    function buildBase(f: (_: THREE.Mesh) => void) {
+        const object = new THREE.Mesh(baseGeometry, baseMaterial);
+        object.rotation.x = (Math.PI * (- 0.5)); // local plane
+        f(object);
+        return object;
+    }
+
+    function buildSide(f: (_: THREE.Mesh) => void) {
+        const object = new THREE.Mesh(sideGeometry, sideMaterial);
+        object.rotation.x = (Math.PI * (- 0.5)); // local plane
+        object.rotation.y = (Math.PI * (- 0.5));
+        f(object);
+        return object;
+    }
+
+    ground.add(buildBase((mesh) => {}));
+    ground.add(buildBase((mesh) => {
+        mesh.position.x -= 5;
+        mesh.position.y += 2.5;
+    }));
+    ground.add(buildBase((mesh) => {
+        mesh.position.x += 5;
+        mesh.position.y += 2.5;
+    }));
+    ground.add(buildBase((mesh) => {
+        mesh.position.x -= 10;
+        mesh.position.y += 5;
+    }));
+    ground.add(buildBase((mesh) => {
+        mesh.position.x += 10;
+        mesh.position.y += 5;
+    }));
+
+    ground.add(buildSide((mesh) => {
+        mesh.position.x += 2.5;
+        mesh.position.y += 1.25;
+    }));
+    ground.add(buildSide((mesh) => {
+        mesh.position.x -= 2.5;
+        mesh.position.y += 1.25;
+    }));
+    ground.add(buildSide((mesh) => {
+        mesh.position.x += 7.5;
+        mesh.position.y += 3.75;
+    }));
+    ground.add(buildSide((mesh) => {
+        mesh.position.x -= 7.5;
+        mesh.position.y += 3.75;
+    }));
+
+    return ground;
+}
+
 function init(viewerDiv: HTMLDivElement) {
     // scene
     scene = new THREE.Scene();
@@ -35,7 +126,7 @@ function init(viewerDiv: HTMLDivElement) {
         0.1, // near plane
         200 // far plane
     );
-    camera.position.set(0, 20, 0);
+    camera.position.set(0, 30, 0);
     camera.lookAt(scene.position);
 
     // renderer
@@ -56,23 +147,8 @@ function init(viewerDiv: HTMLDivElement) {
     const textureLoader = new THREE.TextureLoader();
 
     // ground
-    const groundGeometry = new THREE.PlaneGeometry(20, 20, 10, 10);
-    const groundMaterial = new THREE.MeshBasicMaterial({
-        color: 0xcccccc,
-        side: THREE.DoubleSide
-    });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = (Math.PI * (- 0.5)); // local plane
+    const ground = buildGround();
     scene.add(ground);
-
-    textureLoader.load(groundTexture, function(map) {
-        map.wrapS = THREE.RepeatWrapping;
-        map.wrapT = THREE.RepeatWrapping;
-        map.anisotropy = 16;
-        map.repeat.set(4, 4);
-        groundMaterial.map = map;
-        groundMaterial.needsUpdate = true;
-    });
 
     // flow
     const waterGeometry = new THREE.PlaneGeometry(20, 20);
