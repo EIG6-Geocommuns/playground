@@ -9,116 +9,39 @@ let scene: THREE.Scene;
 let renderer: THREE.WebGLRenderer;
 let camera: THREE.PerspectiveCamera;
 let controls: OrbitControls;
+let light: THREE.Light;
+let tile: THREE.Mesh;
 let water: Water;
-let prevTime = 0;
 
 const flowMapTexture = 'textures/water/Water_1_M_Flow.jpg';
+const heightMapTexture = 'textures/height/heightmap.jpg'
 const groundTexture = 'textures/floors/FloorsCheckerboard_S_Diffuse.jpg';
 const normalMap0Texture = 'textures/water/Water_1_M_Normal.jpg';
 const normalMap1Texture = 'textures/water/Water_2_M_Normal.jpg';
 
 const config = {
     color: 0x00ffff,
-    height: 4,
+    height: 5,
     normalMap0: normalMap0Texture,
     normalMap1: normalMap1Texture,
+    heightMap: heightMapTexture,
     loadNormalMap0: function() {},
-    loadNormalMap1: function() {}
-}
-
-// TODO: Build from blender and export as a gltf file
-function buildGround() {
-    const textureLoader = new THREE.TextureLoader();
-    const ground = new THREE.Group();
-
-    // Base geometries and materials
-    const baseGeometry = new THREE.PlaneGeometry(5, 20, 10, 10);
-    const baseMaterial = new THREE.MeshBasicMaterial({
-        color: 0xcccccc,
-        side: THREE.DoubleSide
-    });
-
-    const sideGeometry = new THREE.PlaneGeometry(2.5, 20, 10, 10);
-    const sideMaterial = new THREE.MeshBasicMaterial({
-        color: 0xcccccc,
-        side: THREE.DoubleSide
-    });
-
-    // Load texture
-    textureLoader.load(groundTexture, function(map) {
-        map.wrapS = THREE.RepeatWrapping;
-        map.wrapT = THREE.RepeatWrapping;
-        map.anisotropy = 16;
-        map.repeat.set(1, 4);
-        baseMaterial.map = map;
-        baseMaterial.needsUpdate = true;
-    });
-    textureLoader.load(groundTexture, function(map) {
-        map.wrapS = THREE.RepeatWrapping;
-        map.wrapT = THREE.RepeatWrapping;
-        map.anisotropy = 16;
-        map.repeat.set(0.5, 4);
-        sideMaterial.map = map;
-        sideMaterial.needsUpdate = true;
-    });
-
-    // Builders
-    function buildBase(f: (_: THREE.Mesh) => void) {
-        const object = new THREE.Mesh(baseGeometry, baseMaterial);
-        object.rotation.x = (Math.PI * (- 0.5)); // local plane
-        f(object);
-        return object;
-    }
-
-    function buildSide(f: (_: THREE.Mesh) => void) {
-        const object = new THREE.Mesh(sideGeometry, sideMaterial);
-        object.rotation.x = (Math.PI * (- 0.5)); // local plane
-        object.rotation.y = (Math.PI * (- 0.5));
-        f(object);
-        return object;
-    }
-
-    ground.add(buildBase((mesh) => {}));
-    ground.add(buildBase((mesh) => {
-        mesh.position.x -= 5;
-        mesh.position.y += 2.5;
-    }));
-    ground.add(buildBase((mesh) => {
-        mesh.position.x += 5;
-        mesh.position.y += 2.5;
-    }));
-    ground.add(buildBase((mesh) => {
-        mesh.position.x -= 10;
-        mesh.position.y += 5;
-    }));
-    ground.add(buildBase((mesh) => {
-        mesh.position.x += 10;
-        mesh.position.y += 5;
-    }));
-
-    ground.add(buildSide((mesh) => {
-        mesh.position.x += 2.5;
-        mesh.position.y += 1.25;
-    }));
-    ground.add(buildSide((mesh) => {
-        mesh.position.x -= 2.5;
-        mesh.position.y += 1.25;
-    }));
-    ground.add(buildSide((mesh) => {
-        mesh.position.x += 7.5;
-        mesh.position.y += 3.75;
-    }));
-    ground.add(buildSide((mesh) => {
-        mesh.position.x -= 7.5;
-        mesh.position.y += 3.75;
-    }));
-
-    return ground;
+    loadNormalMap1: function() {},
+    loadHeightMap: function() {}
 }
 
 function init(viewerDiv: HTMLDivElement) {
     // scene
     scene = new THREE.Scene();
+
+    // renderer
+    renderer = new THREE.WebGLRenderer({
+        canvas: document.createElement('canvas'),
+    });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(viewerDiv.clientWidth, viewerDiv.clientHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    viewerDiv.appendChild(renderer.domElement);
 
     // camera
     camera = new THREE.PerspectiveCamera(
@@ -130,15 +53,6 @@ function init(viewerDiv: HTMLDivElement) {
     camera.position.set(0, 30, 0);
     camera.lookAt(scene.position);
 
-    // renderer
-    renderer = new THREE.WebGLRenderer({
-        canvas: document.createElement('canvas'),
-    });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(viewerDiv.clientWidth, viewerDiv.clientHeight);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    viewerDiv.appendChild(renderer.domElement);
-
     // controls
     controls = new OrbitControls(camera, renderer.domElement);
     controls.minDistance = 5;
@@ -147,37 +61,50 @@ function init(viewerDiv: HTMLDivElement) {
     // loaders
     const textureLoader = new THREE.TextureLoader();
 
-    // ground
-    const ground = buildGround();
-    scene.add(ground);
+    // light
+    light = new THREE.AmbientLight(0x404040);
+    scene.add(light);
 
-    // flow
+    // tile
+    const tileGeometry = new THREE.PlaneGeometry(20, 20, 64, 64);
+    const tileMaterial = new THREE.MeshPhongMaterial({
+        color: 0xcccccc,
+        side: THREE.DoubleSide
+    });
+    tile = new THREE.Mesh(tileGeometry, tileMaterial);
+    tile.rotation.x = (Math.PI * (- 0.5)); // local plane
+    scene.add(tile);
+
+    textureLoader.load(groundTexture, function(map) {
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.RepeatWrapping;
+        map.anisotropy = 16;
+        //map.repeat.set(4, 4); // TODO: cause side-effects on heightmap texture
+        tileMaterial.map = map;
+        tileMaterial.needsUpdate = true;
+    });
+    textureLoader.load(heightMapTexture, function(map) {
+        tileMaterial.displacementMap = map;
+        tileMaterial.displacementScale = 8;
+    });
+
+    // water
     const waterGeometry = new THREE.PlaneGeometry(20, 20);
     const flowMap = textureLoader.load(flowMapTexture);
-    const normalMap0 = textureLoader.load(config.normalMap0);
-    const normalMap1 = textureLoader.load(config.normalMap1);
     water = new Water(waterGeometry, {
         color: config.color,
-        normalMap0,
-        normalMap1,
+        normalMap0: textureLoader.load(config.normalMap0),
+        normalMap1: textureLoader.load(config.normalMap1),
         flowMap
     });
     water.position.y = config.height; // local plane
     water.rotation.x = Math.PI * (- 0.5);
     scene.add(water);
 
-    // flow map helper
-    const helperMaterial = new THREE.MeshBasicMaterial({ map: flowMap });
-    const helper = new THREE.Mesh(waterGeometry, helperMaterial);
-    helper.position.y = water.position.y;
-    helper.rotation.x = water.rotation.x;
-    helper.visible = false;
-    scene.add(helper);
-
     // gui
     const gui = new GUI();
     const waterFolder = gui.addFolder('Water parameters');
-    waterFolder.add(config, 'height', 0.1, 10)
+    waterFolder.add(config, 'height', 0.1, 7.9)
         .onChange(() => water.position.y = config.height)
         .name('height');
     waterFolder.addColor(config, 'color')
@@ -185,11 +112,13 @@ function init(viewerDiv: HTMLDivElement) {
             water.material.uniforms.color.value = new THREE.Color(config.color);
         })
         .name('color');
-    const textureFolder = gui.addFolder('Texture parameters');
-    textureFolder.add(config, 'loadNormalMap0')
+    waterFolder.add(config, 'loadNormalMap0')
         .name('load normal map 0');
-    textureFolder.add(config, 'loadNormalMap1')
+    waterFolder.add(config, 'loadNormalMap1')
         .name('load normal map 1');
+    const terrainFolder = gui.addFolder('Terrain parameters');
+    terrainFolder.add(config, 'loadHeightMap')
+        .name('load height map');
     gui.open();
 
     // TODO: Factorize code
@@ -198,7 +127,6 @@ function init(viewerDiv: HTMLDivElement) {
         input.type = 'file';
         input.onchange = function(e) {
             if (!input.files) return;
-            const textureLoader = new THREE.TextureLoader();
             const fileURL = URL.createObjectURL(input.files[0]);
             const normalMap = textureLoader.load(fileURL);
             water.material.uniforms.tNormalMap0.value = normalMap;
@@ -207,15 +135,28 @@ function init(viewerDiv: HTMLDivElement) {
         input.click();
     }
 
+    // TODO: Factorize code
     config.loadNormalMap1 = function() {
         let input = document.createElement('input');
         input.type = 'file';
         input.onchange = function(e) {
             if (!input.files) return;
-            const textureLoader = new THREE.TextureLoader();
             const fileURL = URL.createObjectURL(input.files[0]);
             const normalMap = textureLoader.load(fileURL);
             water.material.uniforms.tNormalMap1.value = normalMap;
+        }
+        input.click();
+    }
+
+    // TODO: Factorize code
+    config.loadHeightMap = function() {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.onchange = function(e) {
+            if (!input.files) return;
+            const fileURL = URL.createObjectURL(input.files[0]);
+            const map = textureLoader.load(fileURL);
+            tileMaterial.displacementMap = map;
         }
         input.click();
     }
@@ -231,12 +172,8 @@ function init(viewerDiv: HTMLDivElement) {
 function update(time: number) {
     requestAnimationFrame(update);
 
-    const dt = (time - prevTime) / 1000;
-
     controls.update();
     render();
-
-    prevTime = time;
 }
 
 function render() {
