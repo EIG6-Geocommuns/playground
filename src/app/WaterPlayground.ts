@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import Stats from 'three/examples/jsm/libs/stats.module';
 
 import { GUI } from 'dat.gui';
 
@@ -20,9 +19,11 @@ const normalMap1Texture = 'textures/water/Water_2_M_Normal.jpg';
 
 const config = {
     color: 0x00ffff,
-    height: 1,
+    height: 4,
     normalMap0: normalMap0Texture,
     normalMap1: normalMap1Texture,
+    loadNormalMap0: function() {},
+    loadNormalMap1: function() {}
 }
 
 // TODO: Build from blender and export as a gltf file
@@ -175,7 +176,49 @@ function init(viewerDiv: HTMLDivElement) {
 
     // gui
     const gui = new GUI();
+    const waterFolder = gui.addFolder('Water parameters');
+    waterFolder.add(config, 'height', 0.1, 10)
+        .onChange(() => water.position.y = config.height)
+        .name('height');
+    waterFolder.addColor(config, 'color')
+        .onChange(() => {
+            water.material.uniforms.color.value = new THREE.Color(config.color);
+        })
+        .name('color');
+    const textureFolder = gui.addFolder('Texture parameters');
+    textureFolder.add(config, 'loadNormalMap0')
+        .name('load normal map 0');
+    textureFolder.add(config, 'loadNormalMap1')
+        .name('load normal map 1');
     gui.open();
+
+    // TODO: Factorize code
+    config.loadNormalMap0 = function() {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.onchange = function(e) {
+            if (!input.files) return;
+            const textureLoader = new THREE.TextureLoader();
+            const fileURL = URL.createObjectURL(input.files[0]);
+            const normalMap = textureLoader.load(fileURL);
+            water.material.uniforms.tNormalMap0.value = normalMap;
+            water.material.needsUpdate = true;
+        }
+        input.click();
+    }
+
+    config.loadNormalMap1 = function() {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.onchange = function(e) {
+            if (!input.files) return;
+            const textureLoader = new THREE.TextureLoader();
+            const fileURL = URL.createObjectURL(input.files[0]);
+            const normalMap = textureLoader.load(fileURL);
+            water.material.uniforms.tNormalMap1.value = normalMap;
+        }
+        input.click();
+    }
 
     // listeners
     window.addEventListener('resize', () => {
