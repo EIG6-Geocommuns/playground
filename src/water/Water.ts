@@ -13,6 +13,7 @@ import type {
     BufferGeometry,
     ColorRepresentation,
     Object3D,
+    Shader,
     Texture,
     TextureEncoding
 } from 'three';
@@ -20,18 +21,12 @@ import type {
 import vertexShader from './shader/water.vert';
 import fragmentShader from './shader/water.frag';
 
-export interface WaterMaterialParameters {
-    uniforms: {}, // TODO
-    vertexShader: string,
-    fragmentShader: string;
-}
-
 export interface WaterOptions {
     color?: ColorRepresentation,
     flowDirection?: Vector2,
     flowSpeed?: number,
     scale?: number,
-    shader?: WaterMaterialParameters,
+    shader?: Shader,
     flowMap?: Texture,
     normalMap0: Texture,
     normalMap1: Texture,
