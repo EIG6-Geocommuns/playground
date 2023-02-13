@@ -13,6 +13,13 @@ let light: THREE.Light;
 let tile: THREE.Mesh;
 let water: Water;
 
+// TODO: Change texture to something more green-like
+// TODO: Change tile size to WGS84 zoom level 16 or 17 (58.7cm/px or 29,9cm/px)
+// => Gives four tiles for a total length of 300,533m or 153,088m
+// TODO: Shoebox building
+// TODO: More realistic river and not a pond
+// TODO: Skybox
+
 const flowMapTexture = 'textures/water/Water_1_M_Flow.jpg';
 const heightMapTexture = 'textures/height/heightmap.jpg'
 const groundTexture = 'textures/floors/FloorsCheckerboard_S_Diffuse.jpg';
