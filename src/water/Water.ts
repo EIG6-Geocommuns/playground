@@ -18,6 +18,7 @@ import type {
     TextureEncoding
 } from 'three';
 
+import { WaterDepth } from './WaterDepth';
 import vertexShader from './shader/water.vert';
 import fragmentShader from './shader/water.frag';
 
@@ -62,6 +63,8 @@ class Water extends Mesh<BufferGeometry, ShaderMaterial> {
         this.#halfCycle = this.#cycle * 0.5;
         const clock = new Clock();
 
+        const depth = new WaterDepth(geometry);
+
         // material
         this.material = new ShaderMaterial({
             uniforms: UniformsUtils.merge([
@@ -80,6 +83,12 @@ class Water extends Mesh<BufferGeometry, ShaderMaterial> {
         } else {
             this.material.uniforms.flowDirection = { value: flowDirection };
         }
+
+        // Depth
+        this.material.uniforms.tDepth.value =
+            depth.getRenderTarget().depthTexture;
+        this.material.uniforms.tDiffuse.value =
+            depth.getRenderTarget().texture;
 
         // Normal maps
         normalMap0.wrapS = normalMap0.wrapT = RepeatWrapping;
@@ -100,6 +109,13 @@ class Water extends Mesh<BufferGeometry, ShaderMaterial> {
         this.onBeforeRender = function (renderer, scene, camera, geometry, material, group) {
             const dt = clock.getDelta();
             this.update(dt);
+
+            this.material.uniforms.cameraNear.value = camera.near;
+            this.material.uniforms.cameraFar.value = camera.far;
+
+            this.visible = false;
+            depth.onBeforeRender(renderer, scene, camera, geometry, material, group);
+            this.visible = true;
         };
     }
 
@@ -130,6 +146,10 @@ class Water extends Mesh<BufferGeometry, ShaderMaterial> {
             'color': { value: null },
             'tNormalMap0': { value: null },
             'tNormalMap1': { value: null },
+            'tDepth': { value: null },
+            'tDiffuse': { value: null },
+            'cameraNear': { value: 0 },
+            'cameraFar': { value: 0},
             'config': { value: new Vector4() }
         },
         vertexShader,

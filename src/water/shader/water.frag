@@ -10,6 +10,9 @@
 uniform sampler2D tNormalMap0;
 uniform sampler2D tNormalMap1;
 
+uniform sampler2D tDepth;
+uniform sampler2D tDiffuse;
+
 #ifdef USE_FLOWMAP
 uniform sampler2D tFlowMap;
 #else
@@ -20,6 +23,10 @@ uniform vec3 color;
 uniform vec4 config;
 
 in vec2 vUv;
+
+float readDepth(sampler2D depthSampler, vec2 coord) {
+    float fragCoordZ = texture(depthSampler, coord).x;
+}
 
 // http://graphicsrunner.blogspot.com/2010/08/water-using-flow-maps.html
 void main() {
@@ -47,7 +54,8 @@ void main() {
     vec4 normalColor = mix(normalColor0, normalColor1, flowLerp);
 
     // Get our final color.
-    gl_FragColor = vec4(color, 0.8) * normalColor;
+    gl_FragColor = vec4(texture(tDepth, vUv));
+    //gl_FragColor = vec4(color, 0.8) * normalColor;
     //gl_FragColor = refractColor;
     //gl_FragColor = normalColor;
     //gl_FragColor = vec4(color, 1.0);
