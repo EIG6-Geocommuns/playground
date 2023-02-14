@@ -13,22 +13,24 @@ let light: THREE.Light;
 let tile: THREE.Mesh;
 let water: Water;
 
-// TODO: Change texture to something more green-like
-// TODO: Change tile size to WGS84 zoom level 16 or 17 (58.7cm/px or 29,9cm/px)
+// DONE: Change texture to something more green-like
+// DONE: Change tile size to WGS84 zoom level 16 or 17 (58.7cm/px or 29,9cm/px)
 // => Gives four tiles for a total length of 300,533m or 153,088m
 // TODO: Shoebox building
-// TODO: More realistic river and not a pond
+// DONE: More realistic river and not a pond
 // TODO: Skybox
 
 const flowMapTexture = 'textures/water/Water_1_M_Flow.jpg';
-const heightMapTexture = 'textures/height/heightmap.jpg'
-const groundTexture = 'textures/floors/FloorsCheckerboard_S_Diffuse.jpg';
+const heightMapTexture = 'textures/height/dem.png'
+const groundTexture = 'textures/floors/ortho.png';
 const normalMap0Texture = 'textures/water/Water_1_M_Normal.jpg';
 const normalMap1Texture = 'textures/water/Water_2_M_Normal.jpg';
 
 const config = {
     color: 0x00ffff,
-    height: 5,
+    height: 2,
+    tileSize: 153, // four tiles of WGS84 zoom level 17
+    heightMax: 16,
     normalMap0: normalMap0Texture,
     normalMap1: normalMap1Texture,
     heightMap: heightMapTexture,
@@ -55,7 +57,7 @@ function init(viewerDiv: HTMLDivElement) {
         45, // fov
         viewerDiv.clientWidth / viewerDiv.clientHeight, // aspect ratio
         0.1, // near plane
-        200 // far plane
+        400 // far plane
     );
     camera.position.set(0, 30, 0);
     camera.lookAt(scene.position);
@@ -63,7 +65,7 @@ function init(viewerDiv: HTMLDivElement) {
     // controls
     controls = new OrbitControls(camera, renderer.domElement);
     controls.minDistance = 5;
-    controls.maxDistance = 50;
+    controls.maxDistance = 100;
 
     // loaders
     const textureLoader = new THREE.TextureLoader();
@@ -73,7 +75,7 @@ function init(viewerDiv: HTMLDivElement) {
     scene.add(light);
 
     // tile
-    const tileGeometry = new THREE.PlaneGeometry(20, 20, 64, 64);
+    const tileGeometry = new THREE.PlaneGeometry(config.tileSize, config.tileSize, 128, 128);
     const tileMaterial = new THREE.MeshPhongMaterial({
         color: 0xcccccc,
         side: THREE.DoubleSide
@@ -92,11 +94,11 @@ function init(viewerDiv: HTMLDivElement) {
     });
     textureLoader.load(heightMapTexture, function(map) {
         tileMaterial.displacementMap = map;
-        tileMaterial.displacementScale = 8;
+        tileMaterial.displacementScale = config.heightMax;
     });
 
     // water
-    const waterGeometry = new THREE.PlaneGeometry(20, 20);
+    const waterGeometry = new THREE.PlaneGeometry(config.tileSize, config.tileSize);
     const flowMap = textureLoader.load(flowMapTexture);
     water = new Water(waterGeometry, {
         color: config.color,
@@ -111,7 +113,7 @@ function init(viewerDiv: HTMLDivElement) {
     // gui
     const gui = new GUI();
     const waterFolder = gui.addFolder('Water parameters');
-    waterFolder.add(config, 'height', 0.1, 7.9)
+    waterFolder.add(config, 'height', 0.1, config.heightMax - 1)
         .onChange(() => water.position.y = config.height)
         .name('height');
     waterFolder.addColor(config, 'color')
