@@ -21,8 +21,8 @@ let water: Water;
 // TODO: Skybox
 
 const flowMapTexture = 'textures/water/Water_1_M_Flow.jpg';
-const heightMapTexture = 'textures/height/dem.png'
-const groundTexture = 'textures/floors/ortho.png';
+const heightMapTexture = 'textures/height/dem.jpg'
+const groundTexture = 'textures/floors/ortho.jpg';
 const normalMap0Texture = 'textures/water/Water_1_M_Normal.jpg';
 const normalMap1Texture = 'textures/water/Water_2_M_Normal.jpg';
 
